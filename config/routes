@@ -1,0 +1,5 @@
+/       HomeR   GET
+/find   FindR  GET
+/index/#String  IndexR GET
+/synset/#String SynsetR GET
+
