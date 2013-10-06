@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings, ExtendedDefaultRules #-}
+
 module Wordnet.MongoDB.Synset where
 
 import Data.Maybe

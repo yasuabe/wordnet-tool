@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings, ExtendedDefaultRules #-}
+
 module Wordnet.MongoDB.Index where
 
 import Data.Maybe

@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings, ExtendedDefaultRules #-}
+
 module Wordnet.Batch.LoadIndex where
 
 import Data.Char (isSpace)
