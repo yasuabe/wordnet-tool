@@ -22,12 +22,10 @@ import Wordnet.Web.Common
 
 getResultR :: Handler Html
 getResultR = do
-  query'    <- lookupGetParam "q" >>= return.unpack.fromJust
-  let query = query'::String
-  skip      <- lookupGetParam "s" >>= return.unpack.fromJust
-  cat       <- lookupGetParam "c" 
-  let skip'      =  read skip
-  (result, rest) <- findLemma query skip' cat
+  query    <- lookupGetParam "q" >>= return.unpack.fromJust
+  skip     <- lookupGetParam "s" >>= return.read.unpack.fromJust
+  category <- lookupGetParam "c" 
+  (result, rest) <- findLemma query skip category
   let indices    = map MI.fromBson result
   defaultLayout [whamlet|
     ^{header}
@@ -35,31 +33,32 @@ getResultR = do
     $forall index <- indices
       <li>
         <a href=#{(++) "/index/" $ extractLemma $ I.lemma index}>#{showLemma $ I.lemma index}
-    $if skip' > 0
-      <a href=#{prev query skip' cat}>prev <<
-    <span style="margin-left:5pt;margin-right:5pt;">#{skip' + 1} - #{skip' + 10}
+    $if skip > 0
+      <a href=#{prev query skip category}>prev <<
+    <span style="margin-left:5pt;margin-right:5pt;">#{skip + 1} - #{skip + 10}
     $if rest > 0
-      <a href=#{next query skip' cat}>>> next
+      <a href=#{next query skip category}>>> next
   |]
   where
-    prev query skip cat = f cat $ "/result?q=" ++ query ++ "&s=" ++ (show (max (skip - 10) 0))
-    next query skip cat = f cat $ "/result?q=" ++ query ++ "&s=" ++ (show (skip + 10))
-    f cat base = case cat of
-      Just c -> base ++ "&c=" ++ (unpack c)
+    prev query skip cat = createLink query cat $ max (skip - 10) 0
+    next query skip cat = createLink query cat $ skip + 10
+    createLink query cat skip = case cat of
+      Just c  -> base ++ "&c=" ++ (unpack c)
       Nothing -> base
+      where base = "/result?q=" ++ query ++ "&s=" ++ (show skip)
 
 findLemma queryString skip cat = do
-  p <- getYesod >>= return.pipe
-  Right result <- access p master "wordnet" $ findLemma'
-  Right rest   <- access p master "wordnet" $ count query2
+  Right result <- run findLemma'
+  Right rest   <- run $ count query2
   return (result, rest)
   where
     skip' = fromIntegral skip
     findLemma' = find query1 >>= rest
-    q = queryString::String
-    query0 = select (cond ["_id" =: ["$regex" =: "^" ++ q ++ "$", "$options" =: "i"]]) "index"
+    q = "^" ++ (queryString::String) ++ "$"
+    query0 = select (cond ["_id" =: ["$regex" =: q, "$options" =: "i"]]) "index"
     query1 = query0 { skip = skip', limit = 10 }
     query2 = query0 { skip = skip' + 10}
     cond base = case cat of
       Just c -> ("synsetIds" =: ["$regex" =: '^' : unpack c]) : base
       Nothing -> base
+    run act = do { getYesod >>= (\y->access (pipe y) master "wordnet" act) }
