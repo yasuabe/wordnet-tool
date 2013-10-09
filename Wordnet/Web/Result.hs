@@ -4,11 +4,11 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ExtendedDefaultRules #-}
 
-module Wordnet.Web.Find where
+module Wordnet.Web.Result where
 
 import Data.Maybe
 import Data.List hiding (find)
-import Data.Text (unpack)
+import Data.Text (Text, unpack)
 
 import Yesod hiding (count)
 import Database.MongoDB hiding (lookup)
@@ -20,15 +20,14 @@ import Wordnet.Web.Wordnet hiding (findLemma)
 import Wordnet.Web.ModelUtil
 import Wordnet.Web.Common
 
-getHomeR :: Handler Html
-getHomeR = redirect ConditionR
-
-getFindR :: Handler Html
-getFindR = do
-  query     <- lookupGetParam "q" >>= return.unpack.fromJust
+getResultR :: Handler Html
+getResultR = do
+  query'    <- lookupGetParam "q" >>= return.unpack.fromJust
+  let query = query'::String
   skip      <- lookupGetParam "s" >>= return.unpack.fromJust
+  cat       <- lookupGetParam "c" 
   let skip'      =  read skip
-  (result, rest) <- findLemma query skip'
+  (result, rest) <- findLemma query skip' cat
   let indices    = map MI.fromBson result
   defaultLayout [whamlet|
     ^{header}
@@ -37,16 +36,19 @@ getFindR = do
       <li>
         <a href=#{(++) "/index/" $ extractLemma $ I.lemma index}>#{showLemma $ I.lemma index}
     $if skip' > 0
-      <a href=#{prev query skip'}>prev <<
+      <a href=#{prev query skip' cat}>prev <<
     <span style="margin-left:5pt;margin-right:5pt;">#{skip' + 1} - #{skip' + 10}
     $if rest > 0
-      <a href=#{next query skip'}>>> next
+      <a href=#{next query skip' cat}>>> next
   |]
   where
-    prev query skip = "/find?q=" ++ query ++ "&s=" ++ (show (max (skip - 10) 0))
-    next query skip = "/find?q=" ++ query ++ "&s=" ++ (show (skip + 10))
+    prev query skip cat = f cat $ "/result?q=" ++ query ++ "&s=" ++ (show (max (skip - 10) 0))
+    next query skip cat = f cat $ "/result?q=" ++ query ++ "&s=" ++ (show (skip + 10))
+    f cat base = case cat of
+      Just c -> base ++ "&c=" ++ (unpack c)
+      Nothing -> base
 
-findLemma queryString skip = do
+findLemma queryString skip cat = do
   p <- getYesod >>= return.pipe
   Right result <- access p master "wordnet" $ findLemma'
   Right rest   <- access p master "wordnet" $ count query2
@@ -54,7 +56,10 @@ findLemma queryString skip = do
   where
     skip' = fromIntegral skip
     findLemma' = find query1 >>= rest
-    query0 = (select ["_id" =: ["$regex" =: queryString, "$options" =: "i"]] "index")
+    q = queryString::String
+    query0 = select (cond ["_id" =: ["$regex" =: "^" ++ q ++ "$", "$options" =: "i"]]) "index"
     query1 = query0 { skip = skip', limit = 10 }
     query2 = query0 { skip = skip' + 10}
-
+    cond base = case cat of
+      Just c -> ("synsetIds" =: ["$regex" =: '^' : unpack c]) : base
+      Nothing -> base

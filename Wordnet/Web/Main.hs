@@ -17,6 +17,8 @@ import Wordnet.Web.Wordnet
 import Wordnet.Web.Index
 import Wordnet.Web.Synset
 import Wordnet.Web.Find
+import Wordnet.Web.Condition
+import Wordnet.Web.Result
 
 mkYesodDispatch "Wordnet" resourcesWordnet
 

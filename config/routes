@@ -2,4 +2,6 @@
 /find   FindR  GET
 /index/#String  IndexR GET
 /synset/#String SynsetR GET
+/condition ConditionR GET
+/result ResultR GET
 

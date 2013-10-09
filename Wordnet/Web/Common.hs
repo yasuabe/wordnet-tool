@@ -10,7 +10,11 @@ header :: WidgetT site IO ()
 header = [whamlet|
   <div style="background-color:Aquamarine;">
     <form method=get action="/find">
-      <input type="text"   name="q">
+      <span style="margin-left:10pt;">
+        QUICK SEARCH
+        <input type="text"   name="q">
+      <span style="margin-left:10pt;">
+        <a href="/condition">SEARCH
       <input type="hidden" name="s" value="0">
 |]
 
